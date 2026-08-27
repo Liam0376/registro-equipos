@@ -182,7 +182,7 @@ function nextStudentNumber(): number {
   return state.students.reduce((max, s) => Math.max(max, s.number), 0) + 1
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   console.log(`  + Cliente conectado (${wss.clients.size} total)`)
 
   // Send current state immediately
@@ -196,6 +196,15 @@ wss.on('connection', (ws) => {
     try {
       const msg = JSON.parse(raw.toString())
       const reqId = typeof msg.reqId === 'string' ? msg.reqId : undefined
+
+      if (ADMIN_ACTIONS.includes(msg.type) && !isLocal(req.socket.remoteAddress)) {
+        sendTo(ws, {
+          type: 'error',
+          reqId,
+          message: 'Acción solo permitida desde localhost.',
+        })
+        return
+      }
 
       switch (msg.type) {
         case 'registerStudent': {
@@ -304,6 +313,16 @@ wss.on('connection', (ws) => {
     console.log(`  - Cliente desconectado (${wss.clients.size} total)`)
   })
 })
+
+// ─── Access control ──────────────────────────────────────────────────
+// Acciones de administración: solo desde la computadora que corre el
+// servidor (localhost). Los estudiantes se registran desde cualquier
+// dispositivo de la red (registerStudent), pero no pueden gestionar.
+const ADMIN_ACTIONS = ['addTeam', 'removeTeam', 'unregisterStudent', 'resetAll', 'resetTeams']
+
+function isLocal(addr: string | undefined): boolean {
+  return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1'
+}
 
 // ─── Start ───────────────────────────────────────────────────────────
 // Puerto 3002 por defecto para poder correr a la par de scoreboard
