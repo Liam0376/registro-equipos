@@ -93,12 +93,17 @@ PORT=4000 npm start       # corre en http://localhost:4000
 
 ## Cómo funciona
 
-- El servidor (`server.ts`) guarda equipos y estudiantes en un archivo `data.json`.
+- El servidor (`server.ts`) guarda equipos y estudiantes en un archivo `data.json`
+  en la computadora del organizador. **La página es solo un formulario**: nunca se
+  modifican los datos desde los dispositivos de la red.
 - La asignación es automática y **balanceada**: el servidor elige el equipo que
   menos integrantes tiene (con rotación entre empatados para que ningún equipo
   quede favorecido).
-- Los dispositivos se conectan por WebSocket — los registros y la distribución
-  se ven al instante en todos lados.
+- Los equipos solo pueden modificarse desde la computadora que corre el servidor
+  (`localhost`). Desde la red nadie puede crear, editar ni borrar equipos.
+- Los dispositivos de la red solo ven el formulario y los contadores por equipo;
+  **no ven los datos personales** de los otros estudiantes (cada uno recibe
+  únicamente su propia inscripción). La zona de administración está oculta.
 - Los datos persisten: si apagás y prendés el servidor, todo sigue ahí.
 - Además, cada navegador guarda una copia local (`localStorage`), así que si la
   conexión se corta, la pantalla sigue mostrando los últimos datos.

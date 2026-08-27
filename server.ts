@@ -131,8 +131,14 @@ function validateStudent(msg: {
 
 // ─── HTTP server (serves dist/) ──────────────────────────────────────
 const http = createServer(async (req, res) => {
-  // Status endpoint — useful for debugging
+  // Status endpoint — useful for debugging. Solo accesible desde localhost
+  // para que la red no pueda inspeccionar el servidor.
   if (req.url === '/status') {
+    if (!isLocal(req.socket.remoteAddress)) {
+      res.writeHead(403)
+      res.end('Forbidden')
+      return
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ teams: state.teams.length, students: state.students.length, ok: true }))
     return
@@ -165,11 +171,32 @@ const http = createServer(async (req, res) => {
 // ─── WebSocket server ────────────────────────────────────────────────
 const wss = new WebSocketServer({ server: http })
 
+// Clientes de localhost reciben el estado COMPLETO (equipos + estudiantes).
+// Los clientes de la red solo ven equipos y contadores por equipo: se les
+// ocultan los datos personales de los estudiantes (únicamente reciben su
+// propia inscripción). Nadie de la red puede modificar nada (ver ADMIN_ACTIONS).
+const localClients = new Map<WebSocket, boolean>()
+
+function teamCounts(): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const t of state.teams) counts[t.id] = 0
+  for (const s of state.students) counts[s.teamId] = (counts[s.teamId] ?? 0) + 1
+  return counts
+}
+
+function fullStateMsg(type: 'init' | 'update') {
+  return { type, teams: state.teams, students: state.students }
+}
+
+function publicStateMsg(type: 'init' | 'update') {
+  return { type, teams: state.teams, teamCounts: teamCounts() }
+}
+
 function broadcast() {
-  const msg = JSON.stringify({ type: 'update', teams: state.teams, students: state.students })
   for (const client of wss.clients) {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(msg)
+      const local = localClients.get(client) ?? false
+      client.send(JSON.stringify(local ? fullStateMsg('update') : publicStateMsg('update')))
     }
   }
 }
@@ -183,14 +210,12 @@ function nextStudentNumber(): number {
 }
 
 wss.on('connection', (ws, req) => {
-  console.log(`  + Cliente conectado (${wss.clients.size} total)`)
+  const local = isLocal(req.socket.remoteAddress)
+  localClients.set(ws, local)
+  console.log(`  + Cliente conectado (${wss.clients.size} total)${local ? ' [localhost]' : ''}`)
 
-  // Send current state immediately
-  sendTo(ws, {
-    type: 'init',
-    teams: state.teams,
-    students: state.students,
-  })
+  // Send current state immediately (completo en localhost, público en la red)
+  sendTo(ws, local ? fullStateMsg('init') : publicStateMsg('init'))
 
   ws.on('message', async (raw) => {
     try {
@@ -310,6 +335,7 @@ wss.on('connection', (ws, req) => {
   })
 
   ws.on('close', () => {
+    localClients.delete(ws)
     console.log(`  - Cliente desconectado (${wss.clients.size} total)`)
   })
 })

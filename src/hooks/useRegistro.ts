@@ -1,26 +1,49 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { State, Student, Team } from '../types'
+import type { Student, Team } from '../types'
 
 const CACHE_KEY = 'registro-equipos:cache'
+
+type AppData = {
+  teams: Team[]
+  students: Student[]
+  teamCounts: Record<string, number>
+}
+
+const EMPTY: AppData = { teams: [], students: [], teamCounts: {} }
+
+function countsFromStudents(students: Student[], teams: Team[]): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const t of teams) counts[t.id] = 0
+  for (const s of students) counts[s.teamId] = (counts[s.teamId] ?? 0) + 1
+  return counts
+}
 
 /**
  * Data model persisted client-side, so even if the server is briefly
  * unreachable (or the built page is opened via file://) the last known
- * teams and students still show up. The server remains the source of truth.
+ * data still shows up. The server remains the source of truth.
  */
-function readCache(): State {
+function readCache(): AppData {
   try {
     const raw = localStorage.getItem(CACHE_KEY)
     if (raw) {
       const p = JSON.parse(raw)
-      if (Array.isArray(p.teams) && Array.isArray(p.students)) {
-        return { teams: p.teams, students: p.students }
+      if (Array.isArray(p.teams)) {
+        if (Array.isArray(p.students) && p.students.length > 0) {
+          // caché completa (localhost/admin)
+          return { teams: p.teams, students: p.students, teamCounts: countsFromStudents(p.students, p.teams) }
+        }
+        if (p.teamCounts) {
+          // caché pública (red): sin datos personales
+          return { teams: p.teams, students: [], teamCounts: p.teamCounts }
+        }
+        return { teams: p.teams, students: [], teamCounts: {} }
       }
     }
   } catch {
     // ignore malformed cache
   }
-  return { teams: [], students: [] }
+  return EMPTY
 }
 
 /**
@@ -47,7 +70,7 @@ export type RegisterResult =
  * actions for registering students and managing teams.
  */
 export function useRegistro() {
-  const [state, setState] = useState<State>(readCache)
+  const [data, setData] = useState<AppData>(readCache)
   const [connected, setConnected] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const pendingRef = useRef(new Map<string, (r: RegisterResult) => void>())
@@ -58,10 +81,16 @@ export function useRegistro() {
     let alive = true
     let reconnectTimer: ReturnType<typeof setTimeout>
 
-    function apply(data: { teams: Team[]; students: Student[] }) {
-      setState({ teams: data.teams, students: data.students })
+    function apply(data: AppData) {
+      setData(data)
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+        const cache: Record<string, unknown> = { teams: data.teams }
+        if (data.students.length > 0) {
+          cache.students = data.students
+        } else {
+          cache.teamCounts = data.teamCounts
+        }
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
       } catch {
         // storage may be unavailable (private mode)
       }
@@ -80,7 +109,18 @@ export function useRegistro() {
         try {
           const msg = JSON.parse(e.data)
           if (msg.type === 'init' || msg.type === 'update') {
-            apply({ teams: msg.teams, students: msg.students })
+            if (Array.isArray(msg.students)) {
+              // estado completo (localhost): incluye datos personales
+              const students = msg.students
+              apply({
+                teams: msg.teams,
+                students,
+                teamCounts: countsFromStudents(students, msg.teams),
+              })
+            } else if (msg.teamCounts) {
+              // estado público (red): solo equipos y contadores
+              apply({ teams: msg.teams, students: [], teamCounts: msg.teamCounts })
+            }
           } else if (msg.type === 'registered' && msg.reqId) {
             const resolve = pendingRef.current.get(msg.reqId)
             if (resolve) {
@@ -169,8 +209,9 @@ export function useRegistro() {
   const resetTeams = useCallback(() => send({ type: 'resetTeams' }), [send])
 
   return {
-    teams: state.teams,
-    students: state.students,
+    teams: data.teams,
+    students: data.students,
+    teamCounts: data.teamCounts,
     connected,
     register,
     addTeam,

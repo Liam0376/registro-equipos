@@ -12,3 +12,7 @@ export type Student = {
 }
 
 export type State = { teams: Team[]; students: Student[] }
+
+// Lo que recibe un dispositivo de la red: equipos + contadores por equipo.
+// Sin datos personales de los estudiantes.
+export type PublicState = { teams: Team[]; teamCounts: Record<string, number> }

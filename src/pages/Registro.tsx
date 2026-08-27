@@ -6,7 +6,7 @@ import type { Student, Team } from '../types'
 const SEMESTRES = Array.from({ length: 12 }, (_, i) => i + 1)
 
 export function Registro() {
-  const { teams, students, connected, register } = useRegistro()
+  const { teams, teamCounts, connected, register } = useRegistro()
   const [form, setForm] = useState({
     matricula: '',
     name: '',
@@ -24,9 +24,14 @@ export function Registro() {
     () =>
       teams.map((t) => ({
         team: t,
-        count: students.filter((s) => s.teamId === t.id).length,
+        count: teamCounts[t.id] ?? 0,
       })),
-    [teams, students],
+    [teams, teamCounts],
+  )
+
+  const total = useMemo(
+    () => teams.reduce((sum, t) => sum + (teamCounts[t.id] ?? 0), 0),
+    [teams, teamCounts],
   )
 
   async function handleSubmit(e: React.FormEvent) {
@@ -88,7 +93,7 @@ export function Registro() {
         <ResultCard
           result={result}
           onDone={() => setResult(null)}
-          total={students.length}
+          total={total}
         />
       ) : (
         <form
