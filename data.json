@@ -1,0 +1,26 @@
+{
+  "teams": [
+    {
+      "id": "6d16d59b-f9cf-4c3a-951f-dc6db2545247",
+      "name": "Rojo",
+      "color": "#ef4444"
+    },
+    {
+      "id": "d5878ad1-f40a-4f9f-b6b0-b41cd4f736b3",
+      "name": "Azul",
+      "color": "#3b82f6"
+    },
+    {
+      "id": "093ac03f-e9f0-41f8-bdf9-3e2fa364d4c3",
+      "name": "Verde",
+      "color": "#22c55e"
+    },
+    {
+      "id": "20b90282-afe2-4bc5-bf59-3d4967e6ec9f",
+      "name": "Amarillo",
+      "color": "#eab308"
+    }
+  ],
+  "students": [],
+  "lastTeamId": null
+}
