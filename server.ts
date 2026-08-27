@@ -358,6 +358,14 @@ const PORT = Number(process.env.PORT) || 3002
 
 await loadData()
 
+// Garantiza que data.json exista desde el arranque: si falta, se crea con
+// el estado inicial (equipos de ejemplo), para que el organizador siempre
+// tenga el archivo de equipos a editar antes de empezar.
+if (!existsSync(DATA_FILE)) {
+  await saveData()
+  console.log('  ✓ data.json creado con los equipos iniciales')
+}
+
 http.listen(PORT, '0.0.0.0', () => {
   // Show local network IP so other devices can connect
   const nets = Object.values(networkInterfaces())
