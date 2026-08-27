@@ -10,6 +10,10 @@ correr al mismo tiempo.
 
 ### 1. Instalar Node.js (si no lo tienes)
 
+**Requisito:** Node.js **20.19 o superior** (recomendado: la versión LTS 22).
+Con Node 18 el proyecto no compila (Vite 8 lo exige), por eso los pasos de
+abajo instalan la versión actual.
+
 **macOS (Homebrew):**
 ```bash
 brew install node
@@ -21,11 +25,11 @@ curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
-**Windows:** Descarga el instalador desde https://nodejs.org/
+**Windows:** Descarga el instalador desde https://nodejs.org/ (el botón LTS).
 
 Para verificar que quedó bien:
 ```bash
-node -v   # debería mostrar v18 o superior
+node -v   # debería mostrar v20.19.0 o superior (idealmente v22.x)
 npm -v    # debería mostrar un número de versión
 ```
 

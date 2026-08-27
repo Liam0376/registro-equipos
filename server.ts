@@ -5,6 +5,7 @@ import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { networkInterfaces } from 'os'
 import { execSync } from 'child_process'
+import { randomUUID } from 'crypto'
 import { WebSocketServer, WebSocket } from 'ws'
 
 // ─── Paths ───────────────────────────────────────────────────────────
@@ -34,10 +35,10 @@ type Student = {
 type State = { teams: Team[]; students: Student[]; lastTeamId: string | null }
 
 const SEED_TEAMS: Team[] = [
-  { id: crypto.randomUUID(), name: 'Rojo', color: '#ef4444' },
-  { id: crypto.randomUUID(), name: 'Azul', color: '#3b82f6' },
-  { id: crypto.randomUUID(), name: 'Verde', color: '#22c55e' },
-  { id: crypto.randomUUID(), name: 'Amarillo', color: '#eab308' },
+  { id: randomUUID(), name: 'Rojo', color: '#ef4444' },
+  { id: randomUUID(), name: 'Azul', color: '#3b82f6' },
+  { id: randomUUID(), name: 'Verde', color: '#22c55e' },
+  { id: randomUUID(), name: 'Amarillo', color: '#eab308' },
 ]
 
 let state: State = {
@@ -249,7 +250,7 @@ wss.on('connection', (ws, req) => {
           const { matricula, name, carrera, semestre } = check.data
           const team = pickTeam()
           const student: Student = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             matricula,
             name,
             carrera,
@@ -274,7 +275,7 @@ wss.on('connection', (ws, req) => {
             sendTo(ws, { type: 'error', reqId, message: 'Nombre o color inválidos.' })
             break
           }
-          state.teams.push({ id: crypto.randomUUID(), name, color })
+          state.teams.push({ id: randomUUID(), name, color })
           await saveData()
           broadcast()
           break
